@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>词语配对游戏 · Word Match</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  :root{
+    --bg:#0f1729; --card:#1b2740; --ink:#1e293b; --muted:#94a3b8;
+    --green:#10b981; --blue:#2563eb; --amber:#f59e0b; --red:#ef4444; --purple:#8b5cf6;
+  }
+  body{
+    font-family:"Nunito","Microsoft YaHei","PingFang SC",sans-serif;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(37,99,235,0.18), transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(16,185,129,0.16), transparent 45%),
+      #0f1729;
+    min-height:100vh; color:#e8eef7; overflow-x:hidden;
+  }
+
+  /* ===== 设置页 ===== */
+  #setup{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .setup-card{
+    width:100%; max-width:620px; background:rgba(27,39,64,0.85);
+    border:1px solid rgba(148,163,184,0.18); border-radius:24px; padding:36px; backdrop-filter:blur(8px);
+  }
+  .badge{ display:inline-block; background:var(--purple); color:#fff; font-size:13px; font-weight:700; padding:5px 14px; border-radius:20px; letter-spacing:1px; }
+  .setup-card h1{ font-size:30px; margin:14px 0 4px; font-weight:800; }
+  .setup-card .sub{ color:var(--muted); font-size:14px; margin-bottom:24px; }
+  .field-label{ font-size:13px; color:var(--muted); margin:18px 0 8px; font-weight:700; letter-spacing:.5px; }
+  .pairs{ display:flex; flex-direction:column; gap:10px; }
+  .pair-row{ display:flex; gap:10px; align-items:center; }
+  .pair-row .idx{ width:26px; height:26px; flex:none; border-radius:50%; background:var(--purple); color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+  .pair-row input{
+    min-width:0; background:#0f1729; border:1.5px solid rgba(148,163,184,0.25); border-radius:12px;
+    color:#fff; font-family:inherit; font-size:18px; font-weight:600; padding:12px 14px; outline:none;
+  }
+  .pair-row input::placeholder{ color:#475569; font-weight:500; }
+  .pair-row input:focus{ border-color:var(--purple); }
+  .pair-row input.cn{ flex:0 0 36%; }
+  .pair-row input.py{ flex:1 1 auto; font-family:"Nunito","Segoe UI","Noto Sans CJK SC",sans-serif; }
+  .pair-row .eq{ color:var(--muted); font-size:18px; font-weight:700; flex:none; }
+  .row-actions{ display:flex; gap:10px; margin-top:14px; }
+  .setup-timer{ display:flex; align-items:center; gap:8px; margin-top:22px; font-size:15px; color:#e8eef7; font-weight:600; cursor:pointer; user-select:none; padding:12px 16px; background:rgba(16,185,129,0.1); border:1.5px solid rgba(16,185,129,0.3); border-radius:12px; }
+  .setup-timer input{ width:20px; height:20px; accent-color:var(--green); cursor:pointer; }
+  .btn{ font-family:inherit; font-weight:700; border:none; border-radius:14px; cursor:pointer; transition:filter .15s, transform .1s; }
+  .btn:active{ transform:translateY(1px); }
+  .btn-add{ background:rgba(148,163,184,0.15); color:#cbd5e1; font-size:14px; padding:12px 20px; }
+  .btn-add:hover{ filter:brightness(1.15); }
+  .btn-start{ flex:1; background:var(--green); color:#04140f; font-size:18px; padding:15px; }
+  .btn-start:hover{ filter:brightness(1.08); }
+  .hint{ color:var(--muted); font-size:12px; margin-top:14px; line-height:1.6; }
+
+  /* ===== 游戏页 ===== */
+  #game{ display:none; min-height:100vh; flex-direction:column; padding:20px 24px; }
+  #game.show{ display:flex; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .topbar h2{ font-size:21px; font-weight:700; line-height:1.3; }
+  .topbar h2 .en{ display:block; font-size:12px; color:var(--muted); font-weight:500; margin-top:2px; }
+  .stats{ display:flex; gap:24px; align-items:center; }
+  .stat{ text-align:center; }
+  .stat .num{ font-size:28px; font-weight:800; color:var(--green); line-height:1; }
+  .stat .lbl{ font-size:11px; color:var(--muted); letter-spacing:1px; }
+  .btn-restart{ background:rgba(148,163,184,0.15); color:#cbd5e1; font-size:13px; padding:10px 18px; }
+
+  .board{ flex:1; display:grid; grid-template-columns:repeat(2,1fr); gap:36px; align-content:start; max-width:900px; margin:0 auto; width:100%; padding-top:20px; }
+  .col{ display:flex; flex-direction:column; gap:14px; }
+  #colCn,#colPy{ display:flex; flex-direction:column; gap:20px; }
+  .col-title{ text-align:center; font-size:13px; color:var(--muted); letter-spacing:2px; margin-bottom:2px; font-weight:700; }
+  .tile{
+    background:var(--card); border:2px solid rgba(148,163,184,0.2); border-radius:16px;
+    height:72px; display:flex; align-items:center; justify-content:center;
+    text-align:center; cursor:pointer; transition:all .15s; user-select:none;
+    font-weight:700; position:relative;
+  }
+  .tile.cn{ font-size:36px; color:#fff; font-family:"KaiTi","STKaiti","DFKai-SB","FangSong","Microsoft YaHei",serif; }
+  .tile.py{ font-size:26px; color:#cbd5e1; font-family:"Nunito","Segoe UI","Noto Sans CJK SC",sans-serif; font-weight:600; letter-spacing:0.5px; }
+  .tile:hover{ border-color:var(--purple); transform:translateY(-2px); }
+  .tile.selected{ border-color:var(--amber); background:rgba(245,158,11,0.18); box-shadow:0 0 0 3px rgba(245,158,11,0.25); }
+  .tile.matched{ border-color:var(--green); background:rgba(16,185,129,0.16); color:var(--green); cursor:default; opacity:.55; }
+  .tile.wrong{ border-color:var(--red); background:rgba(239,68,68,0.18); animation:shake .35s; }
+  @keyframes shake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
+
+  /* 胜利覆盖 */
+  #win{ display:none; position:fixed; inset:0; background:rgba(15,23,41,0.92); align-items:center; justify-content:center; flex-direction:column; gap:20px; z-index:20; }
+  #win.show{ display:flex; }
+  #win .result-emoji{ font-size:90px; line-height:1; animation:pop .5s ease-out; }
+  @keyframes pop{ 0%{transform:scale(0);} 70%{transform:scale(1.2);} 100%{transform:scale(1);} }
+  #win .big{ font-size:52px; font-weight:800; }
+  #win .result-cn{ font-size:24px; color:#cbd5e1; font-weight:700; }
+  #win .txt{ font-size:16px; color:var(--muted); }
+  #win .result-stars{ font-size:38px; letter-spacing:4px; }
+  #win .btn-again{ background:var(--green); color:#04140f; font-size:18px; padding:14px 40px; margin-top:6px; }
+</style>
+</head>
+<body>
+  <!-- 设置页 -->
+  <div id="setup">
+    <div class="setup-card">
+      <span class="badge">数字化游戏 · AI Game</span>
+      <h1>Word Match <span style="font-size:18px;color:var(--muted);font-weight:600;">词语配对</span></h1>
+      <div class="field-label">老师可以在下方增加词语,注意每行的拼音要和词语保持一致。</div>
+      <div class="pairs" id="pairs"></div>
+      <label class="setup-timer"><input type="checkbox" id="timerChk"> ⏱ 开启计时(分组比赛用) Enable Timer</label>
+      <div class="row-actions">
+        <button class="btn btn-add" id="addBtn">+ Add word 加词</button>
+        <button class="btn btn-start" id="startBtn">Start Game 开始 ▶</button>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- 游戏页 -->
+  <div id="game">
+    <div class="topbar">
+      <h2>Match the word to its pinyin <span class="en">把汉字和拼音连起来</span></h2>
+      <div class="stats">
+        <div class="stat" id="timerStat" style="display:none;"><div class="num" id="timeN">0</div><div class="lbl">秒 SEC</div></div>
+        <div class="stat"><div class="num" id="matchedN">0</div><div class="lbl">PAIRS 配对</div></div>
+        <div class="stat"><div class="num" id="triesN">0</div><div class="lbl">TRIES 尝试</div></div>
+        <button class="btn btn-restart" id="restartBtn">↺ Reset 重设</button>
+      </div>
+    </div>
+    <div class="board">
+      <div class="col">
+        <div class="col-title">汉字 <span style="font-family:'Nunito','Segoe UI',Arial,sans-serif;">Hànzì</span></div>
+        <div id="colCn"></div>
+      </div>
+      <div class="col">
+        <div class="col-title">拼音 <span style="font-family:'Nunito','Segoe UI',Arial,sans-serif;">Pīnyīn</span></div>
+        <div id="colPy"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结算反馈 -->
+  <div id="win">
+    <div class="result-emoji" id="resultEmoji">🏆</div>
+    <div class="big" id="resultBig">Excellent!</div>
+    <div class="result-cn" id="resultCn">太棒了!</div>
+    <div class="txt" id="winTxt"></div>
+    <div class="result-stars" id="resultStars"></div>
+    <button class="btn btn-again" id="againBtn">Play Again 再玩一次 ↺</button>
+  </div>
+
+<script>
+// ====== 本课配置(每课只改这里)======
+const DEFAULT_PAIRS=[
+  {cn:"离",py:"lí"},{cn:"远",py:"yuǎn"},{cn:"近",py:"jìn"},
+  {cn:"学校",py:"xuéxiào"},{cn:"公园",py:"gōngyuán"},{cn:"商场",py:"shāngchǎng"},
+  {cn:"去",py:"qù"},{cn:"校车",py:"xiàochē"},{cn:"车",py:"chē"},
+  {cn:"很远",py:"hěnyuǎn"},{cn:"很近",py:"hěnjìn"},{cn:"不远",py:"bùyuǎn"},
+  {cn:"常常",py:"chángcháng"},
+];
+// true = 打开直接进游戏(跳过设置页);false = 先显示设置页(本课词已预填,可勾计时,点开始即玩)
+const AUTO_START=false;
+// ====================================
+const $=id=>document.getElementById(id);
+
+// ---- 设置页:动态词条 ----
+function pairRow(i,cn="",py=""){
+  const div=document.createElement("div");
+  div.className="pair-row";
+  div.innerHTML=`<div class="idx">${i+1}</div>
+    <input class="cn" placeholder="汉字" value="${cn}">
+    <span class="eq">=</span>
+    <input class="py" placeholder="pīnyīn" value="${py}">`;
+  return div;
+}
+function renderPairs(list){
+  const box=$("pairs"); box.innerHTML="";
+  list.forEach((p,i)=>box.appendChild(pairRow(i,p.cn,p.py)));
+}
+renderPairs(DEFAULT_PAIRS);
+
+$("addBtn").onclick=()=>{
+  const box=$("pairs");
+  if(box.children.length>=10){ alert("最多 10 个词"); return; }
+  box.appendChild(pairRow(box.children.length));
+};
+
+$("startBtn").onclick=()=>{
+  const rows=[...$("pairs").children];
+  const pairs=[];
+  rows.forEach(r=>{
+    const cn=r.querySelector(".cn").value.trim();
+    const py=r.querySelector(".py").value.trim();
+    if(cn&&py) pairs.push({cn,py});
+  });
+  if(pairs.length<2){ alert("至少需要 2 个完整的词"); return; }
+  startGame(pairs);
+};
+
+// ---- 游戏逻辑 ----
+let state={pairs:[],matched:0,tries:0,selCn:null,selPy:null,timed:false,seconds:0,timerId:null};
+function shuffle(a){ a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+function startGame(pairs){
+  state={pairs,matched:0,tries:0,selCn:null,selPy:null,timed:$("timerChk").checked,seconds:0,timerId:null};
+  $("setup").style.display="none";
+  $("game").classList.add("show");
+  $("win").classList.remove("show");
+  $("matchedN").textContent="0";
+  $("triesN").textContent="0";
+  if(state.timed){
+    $("timerStat").style.display="block"; $("timeN").textContent="0";
+    state.timerId=setInterval(()=>{ state.seconds++; $("timeN").textContent=state.seconds; },1000);
+  } else { $("timerStat").style.display="none"; }
+  renderBoard();
+}
+function renderBoard(){
+  const cnList=shuffle(state.pairs), pyList=shuffle(state.pairs);
+  const colCn=$("colCn"), colPy=$("colPy");
+  colCn.innerHTML=""; colPy.innerHTML="";
+  cnList.forEach(p=>{
+    const t=document.createElement("div");
+    t.className="tile cn"; t.textContent=p.cn; t.dataset.key=p.cn;
+    t.onclick=()=>selectCn(t,p);
+    colCn.appendChild(t);
+  });
+  pyList.forEach(p=>{
+    const t=document.createElement("div");
+    t.className="tile py"; t.textContent=p.py; t.dataset.key=p.cn;
+    t.onclick=()=>selectPy(t,p);
+    colPy.appendChild(t);
+  });
+}
+function selectCn(t,p){
+  if(t.classList.contains("matched"))return;
+  if(state.selCn) state.selCn.el.classList.remove("selected");
+  state.selCn={el:t,p}; t.classList.add("selected");
+  tryMatch();
+}
+function selectPy(t,p){
+  if(t.classList.contains("matched"))return;
+  if(state.selPy) state.selPy.el.classList.remove("selected");
+  state.selPy={el:t,p}; t.classList.add("selected");
+  tryMatch();
+}
+function tryMatch(){
+  if(!state.selCn||!state.selPy)return;
+  state.tries++; $("triesN").textContent=state.tries;
+  const a=state.selCn, b=state.selPy;
+  if(a.p.cn===b.p.cn){
+    a.el.classList.remove("selected"); b.el.classList.remove("selected");
+    a.el.classList.add("matched"); b.el.classList.add("matched");
+    state.matched++; $("matchedN").textContent=state.matched;
+    state.selCn=null; state.selPy=null;
+    beep(true);
+    if(state.matched===state.pairs.length) setTimeout(win,400);
+  }else{
+    const ea=a.el, eb=b.el;
+    ea.classList.add("wrong"); eb.classList.add("wrong");
+    beep(false);
+    setTimeout(()=>{
+      ea.classList.remove("wrong","selected"); eb.classList.remove("wrong","selected");
+    },400);
+    state.selCn=null; state.selPy=null;
+  }
+}
+function win(){
+  if(state.timerId){ clearInterval(state.timerId); state.timerId=null; }
+  const pairs=state.pairs.length, tries=state.tries;
+  const accuracy=pairs/tries;
+  let emoji,big,cn,stars,sound;
+  if(accuracy>=0.9){
+    emoji="🏆"; big="Excellent!"; cn="太棒了!"; stars="⭐⭐⭐⭐⭐"; sound="cheer";
+  }else if(accuracy>=0.6){
+    emoji="👏"; big="Well Done!"; cn="做得好!"; stars="⭐⭐⭐⭐"; sound="good";
+  }else{
+    emoji="💪"; big="Keep Going!"; cn="继续加油!"; stars="⭐⭐⭐"; sound="good";
+  }
+  $("resultEmoji").textContent=emoji;
+  $("resultBig").textContent=big;
+  $("resultCn").textContent=cn;
+  $("resultStars").textContent=stars;
+  const timeStr = state.timed ? `  ·  ⏱ ${state.seconds} 秒` : "";
+  $("winTxt").textContent=`${pairs} pairs · ${tries} tries${timeStr}  (完成 ${pairs} 个词,用了 ${tries} 次${state.timed?",用时 "+state.seconds+" 秒":""})`;
+  $("win").classList.add("show");
+  playResult(sound);
+}
+$("restartBtn").onclick=()=>{ $("game").classList.remove("show"); $("setup").style.display="flex"; $("win").classList.remove("show"); };
+$("againBtn").onclick=()=>startGame(state.pairs);
+
+// 音效(Web Audio,离线)
+let actx=null;
+function beep(ok){
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(),g=actx.createGain();
+    o.connect(g);g.connect(actx.destination);
+    o.frequency.value=ok?880:220; o.type=ok?"sine":"square";
+    g.gain.setValueAtTime(0.0001,actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(ok?0.3:0.2,actx.currentTime+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+(ok?0.3:0.2));
+    o.start();o.stop(actx.currentTime+0.32);
+  }catch(e){}
+}
+// 结算音效:cheer=上行欢快音阶,good=温和鼓励两音
+function playResult(kind){
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const notes = kind==="cheer" ? [523,659,784,1047,1319] : [523,784];
+    notes.forEach((f,i)=>{
+      const o=actx.createOscillator(),g=actx.createGain();
+      o.connect(g);g.connect(actx.destination);
+      o.type="sine"; o.frequency.value=f;
+      const t=actx.currentTime+i*0.12;
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(0.3,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+0.3);
+      o.start(t);o.stop(t+0.32);
+    });
+  }catch(e){}
+}
+
+// 专属版:打开直接进游戏
+if(AUTO_START){ startGame(DEFAULT_PAIRS); }
+</script>
+</body>
+</html>
